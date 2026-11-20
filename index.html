@@ -232,6 +232,18 @@ details.panel summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; 
 .sb.zero { opacity: .4; }
 .sb-wands b { color: #ffb36b; } .sb-cups b { color: #8fc8ff; } .sb-swords b { color: #d6dcff; } .sb-pentacles b { color: #b6e39a; } .sb-major b { color: var(--accent); }
 
+/* 그림 읽기 */
+.card-read .thumb { position: relative; border: 0; padding: 0; cursor: zoom-in; background: none; }
+.zoom-hint { position: absolute; right: 3px; bottom: 3px; font-size: .7rem; background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 4px; }
+.pic-read { margin: 6px 0 8px; padding: 8px 12px; border-radius: 10px; background: var(--surface-strong); border: 1px dashed var(--line); font-size: .88rem; line-height: 1.6; }
+.pic-read b { display: block; font-size: .78rem; color: var(--accent); margin-bottom: 2px; }
+.zoom-box { text-align: center; }
+.zoom-pos { color: var(--accent); font-weight: 700; font-size: .9rem; margin-bottom: 8px; }
+.zoom-img { width: min(70vw, 300px, calc((100vh - 280px) * 0.6)); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.zoom-img.rev { transform: rotate(180deg); }
+.zoom-name { font-weight: 800; margin: 10px 0 4px; }
+.zoom-pic { color: var(--muted); font-size: .88rem; line-height: 1.6; margin: 0; text-align: left; }
+
 .card-read .pdesc { font-size: .78rem; color: var(--muted); margin: -2px 0 4px; }
 
 .options { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 22px 0; }
@@ -812,6 +824,100 @@ window.TAROT_CONFIG = {
     });
   });
 
+  // ---------- 카드 그림 묘사 (라이더-웨이트 1909 원판 기준) ----------
+  // 해석이 "그림의 어느 부분에서 나온 말인지" 보이도록, AI와 기본 해석·결과 화면에서 함께 사용
+  const MAJOR_PIC = [
+    '흰 장미를 든 젊은이가 하얀 개와 함께 절벽 끝을 향해 가볍게 걸어가고, 하늘엔 밝은 해가 떠 있어요.',
+    '한 손은 하늘을, 다른 손은 땅을 가리키는 사람 앞 탁자에 컵·검·막대·펜타클 네 도구가 놓여 있고, 머리 위에 무한대(∞) 표시가 있어요.',
+    '흑백 두 기둥 사이에 앉은 여인이 두루마리를 품고 있고, 뒤로 석류 무늬 휘장이, 발밑에 초승달이 있어요.',
+    '별 왕관을 쓴 여인이 쿠션에 편히 기대앉아 있고, 주변에 무르익은 밀밭과 숲, 흐르는 시냇물이 있어요.',
+    '숫양 머리가 새겨진 돌 왕좌에 갑옷 입은 왕이 홀과 구슬을 들고 앉아 있고, 뒤로 험한 바위산이 솟아 있어요.',
+    '세 겹 관을 쓴 교황이 손을 들어 축복하고, 앞에 두 사람이 무릎 꿇고 있으며, 발밑에 교차한 열쇠 두 개가 있어요.',
+    '하늘의 천사 아래 남녀가 마주 서 있고, 여자 뒤엔 뱀이 감긴 사과나무가, 남자 뒤엔 불꽃이 달린 나무가 있어요.',
+    '별 덮개 아래 갑옷 입은 사람이 전차에 서 있고, 앞에 흑백 스핑크스 두 마리가 서로 다른 쪽을 보고 앉아 있어요.',
+    '흰 옷의 여인이 사자의 입을 부드럽게 다물게 하고 있고, 머리 위엔 무한대(∞) 표시, 허리엔 꽃띠가 있어요.',
+    '회색 망토의 노인이 어두운 산꼭대기에서 별이 든 등불을 들고 지팡이를 짚은 채 홀로 서 있어요.',
+    '구름 속에서 글자가 새겨진 커다란 바퀴가 돌고, 위엔 스핑크스, 옆엔 뱀과 아누비스, 네 모서리엔 날개 달린 존재들이 책을 읽고 있어요.',
+    '붉은 옷의 인물이 두 기둥 사이에 앉아 한 손엔 곧게 세운 검을, 다른 손엔 저울을 들고 정면을 보고 있어요.',
+    '한 사람이 T자 나무에 한 발이 묶여 거꾸로 매달려 있지만, 머리 주위로 빛이 나고 표정은 평온해요.',
+    '검은 갑옷의 해골 기사가 흰 장미 깃발을 들고 흰 말을 타고 오고, 앞에 쓰러진 왕과 기도하는 사람들, 멀리 두 탑 사이로 해가 떠올라요.',
+    '날개 달린 천사가 한 발은 물에, 한 발은 땅에 두고 두 컵 사이로 물을 옮겨 따르고, 멀리 빛나는 길이 산으로 이어져요.',
+    '박쥐 날개의 악마가 받침대 위에 앉아 있고, 그 아래 남녀가 느슨한 쇠사슬에 목이 묶인 채 서 있어요.',
+    '높은 탑 꼭대기에 번개가 내리쳐 왕관이 떨어지고, 불길 속에서 두 사람이 거꾸로 떨어지고 있어요.',
+    '큰 별과 작은 별 일곱 개 아래, 여인이 무릎 꿇고 두 항아리의 물을 연못과 땅에 붓고 있어요.',
+    '얼굴이 그려진 달 아래 개와 늑대가 울고, 물속에서 가재가 기어 나오며, 두 탑 사이로 구불구불한 길이 멀리 이어져요.',
+    '커다란 해 아래, 해바라기 담장 앞에서 아이가 붉은 깃발을 들고 흰 말을 타고 있어요.',
+    '구름 위 천사가 나팔을 불고, 아래 관에서 사람들이 두 팔을 벌리며 일어나고 있어요.',
+    '월계관 고리 안에서 천을 두른 인물이 두 막대를 들고 춤추고, 네 모서리엔 천사·독수리·사자·황소가 있어요.',
+  ];
+  const SUIT_PIC = {
+    wands: [
+      '구름에서 나온 손이 새잎이 돋은 막대를 힘 있게 쥐고 있고, 아래로 성과 강이 보여요.',
+      '성벽 위에 선 사람이 한 손에 지구본을 들고 먼 바다를 바라보고, 옆에 막대 두 개가 있어요.',
+      '언덕 위 막대 세 개 옆에 선 사람이 뒷모습으로 바다 위를 오가는 배들을 바라보고 있어요.',
+      '꽃 장식이 걸린 막대 네 개 아래에서 사람들이 꽃다발을 흔들며 반기고, 뒤로 성이 있어요.',
+      '다섯 사람이 저마다 막대를 휘두르며 한데 엉켜 겨루고 있어요.',
+      '월계관을 쓴 사람이 흰 말을 타고 행진하고, 막대를 든 사람들이 둘러싸 환호해요.',
+      '언덕 위에 선 사람이 막대를 휘둘러 아래에서 올라오는 막대 여섯 개를 막아 내고 있어요.',
+      '사람 없이 막대 여덟 개가 맑은 하늘을 가로질러 한 방향으로 나란히 빠르게 날아가고, 아래로 강과 언덕이 보여요.',
+      '머리에 붕대를 감은 사람이 막대 하나에 기대 경계하는 눈빛으로 서 있고, 뒤에 막대 여덟 개가 울타리처럼 서 있어요.',
+      '한 사람이 막대 열 개를 한꺼번에 끌어안고 허리를 굽힌 채, 앞이 잘 안 보이는 상태로 마을을 향해 걸어가요.',
+      '넓은 들판의 젊은이가 막대를 세워 들고 그 끝의 새싹을 호기심 어린 눈으로 바라봐요.',
+      '기사가 앞발을 높이 든 말을 타고 막대를 쥔 채 힘차게 달려 나가요.',
+      '사자 장식 왕좌의 여왕이 한 손엔 막대, 한 손엔 해바라기를 들고 있고, 발 앞에 검은 고양이가 앉아 있어요.',
+      '사자와 도마뱀 무늬 왕좌의 왕이 막대를 쥐고 앞을 내다보며 앉아 있고, 발치에 도마뱀이 있어요.',
+    ],
+    cups: [
+      '구름에서 나온 손이 든 컵에서 물줄기 다섯 개가 넘쳐흐르고, 비둘기가 내려오며 연못엔 연꽃이 피어 있어요.',
+      '두 사람이 마주 보고 서로 컵을 건네고, 그 위에 날개 달린 사자 머리와 뱀 두 마리가 감긴 지팡이가 있어요.',
+      '세 여인이 잔을 높이 들고 원을 그리며 축하하고, 발밑에 과일과 꽃이 있어요.',
+      '나무 아래 팔짱 낀 사람이 앞의 컵 세 개만 바라보고, 구름에서 나온 손이 내미는 네 번째 컵은 보지 않아요.',
+      '검은 망토의 사람이 고개를 숙여 쓰러진 컵 세 개를 보고 있고, 등 뒤엔 아직 서 있는 컵 두 개와 다리가 있어요.',
+      '꽃이 담긴 컵들 사이에서 아이가 다른 아이에게 꽃 컵을 건네고, 뒤로 오래된 마을이 있어요.',
+      '그림자 같은 사람 앞 구름 속에 컵 일곱 개가 떠 있고, 컵마다 성·보석·뱀·용·월계관·얼굴·가려진 형상이 담겨 있어요.',
+      '달빛 아래 한 사람이 쌓아 둔 컵 여덟 개를 뒤로하고 지팡이를 짚은 채 산 쪽으로 떠나가요.',
+      '만족스러운 표정의 사람이 팔짱 끼고 앉아 있고, 뒤로 컵 아홉 개가 나란히 놓여 있어요.',
+      '무지개 속 컵 열 개 아래, 부부가 팔을 들어 올리고 아이 둘이 뛰어놀며, 앞에 집이 있어요.',
+      '물결무늬 옷의 젊은이가 컵 속에서 고개를 내민 물고기를 신기한 듯 바라봐요.',
+      '기사가 천천히 걷는 말 위에서 컵을 앞으로 조심스레 내밀며 강 쪽으로 나아가요.',
+      '바닷가 왕좌의 여왕이 뚜껑 덮인 화려한 컵을 깊이 들여다보고 있어요.',
+      '거친 바다 위 돌 왕좌의 왕이 컵과 홀을 들고 평온하게 앉아 있고, 옆으로 물고기가 뛰고 배가 지나가요.',
+    ],
+    swords: [
+      '구름에서 나온 손이 왕관을 꿴 곧은 검을 높이 들고 있어요.',
+      '눈을 가린 사람이 바닷가에 앉아 검 두 개를 가슴 앞에 엇갈려 들고 있고, 뒤로 초승달이 떠 있어요.',
+      '빗속 먹구름 아래 붉은 심장을 검 세 개가 꿰뚫고 있어요.',
+      '스테인드글라스 아래 기사 조각상이 두 손을 모은 채 누워 쉬고, 벽에 검 세 개, 옆에 검 하나가 있어요.',
+      '검 세 개를 챙긴 사람이 돌아보며 웃고, 뒤로 두 사람이 검을 버린 채 고개 숙여 떠나가요.',
+      '뱃사공이 망토 두른 사람과 아이를 태우고 잔잔한 물 쪽으로 노를 저어 가고, 배에 검 여섯 개가 꽂혀 있어요.',
+      '한 사람이 검 다섯 개를 몰래 안고 까치발로 천막을 빠져나가며 뒤를 돌아보고, 검 두 개는 남아 있어요.',
+      '눈을 가리고 몸이 묶인 사람이 검 여덟 개에 둘러싸여 서 있지만, 두 발은 자유로워요.',
+      '어두운 방 침대에서 사람이 일어나 앉아 두 손으로 얼굴을 감싸고 있고, 벽에 검 아홉 개가 걸려 있어요.',
+      '엎드린 사람의 등에 검 열 개가 꽂혀 있지만, 어두운 하늘 끝에서 노란 새벽빛이 밝아 와요.',
+      '바람 부는 언덕 위 젊은이가 검을 높이 들고 주위를 날카롭게 살펴요.',
+      '기사가 검을 앞세우고 거센 바람 속을 전속력으로 돌진해요.',
+      '구름 위 왕좌의 여왕이 검을 곧게 세워 들고 다른 손을 앞으로 내민 채 옆을 바라봐요.',
+      '정면을 바라보는 왕이 곧게 선 검을 들고 단단한 표정으로 왕좌에 앉아 있어요.',
+    ],
+    pentacles: [
+      '구름에서 나온 손이 커다란 펜타클(금화)을 받쳐 들고, 아래로 꽃 아치가 있는 정원 길이 이어져요.',
+      '한 사람이 춤추듯 두 펜타클을 무한대(∞) 모양 끈으로 저글링하고, 뒤로 높은 파도 위 배들이 보여요.',
+      '성당 안에서 석공이 작업하고, 두 사람이 설계도를 들고 함께 의논하며, 위에 펜타클 세 개가 새겨져 있어요.',
+      '왕관 쓴 사람이 펜타클 하나를 꼭 끌어안고, 머리 위와 두 발 아래에도 펜타클을 둔 채 앉아 있어요.',
+      '눈 내리는 밤, 누더기 차림의 두 사람이 불 켜진 교회 창 밖을 힘겹게 지나가요.',
+      '저울을 든 부유한 사람이 무릎 꿇은 두 사람 중 한 명에게 동전을 나눠 줘요.',
+      '농부가 괭이에 기대어 덩굴에 열린 펜타클 일곱 개를 바라보며 잠시 쉬고 있어요.',
+      '장인이 의자에 앉아 펜타클을 하나하나 정성껏 새기고, 완성한 펜타클들이 기둥에 걸려 있어요.',
+      '포도밭 정원에서 우아한 옷의 여인이 손에 새를 얹고 홀로 여유롭게 서 있어요.',
+      '아치 아래 노인이 개를 쓰다듬고, 젊은 부부와 아이가 함께 있으며, 펜타클 열 개가 나무 모양으로 놓여 있어요.',
+      '들판에 선 젊은이가 두 손으로 펜타클을 들어 올려 집중해서 바라봐요.',
+      '기사가 멈춰 선 검은 말 위에서 펜타클을 들고 갈아 놓은 밭을 차분히 바라봐요.',
+      '꽃과 나무에 둘러싸인 여왕이 무릎 위 펜타클을 다정하게 내려다보고, 발치에 토끼가 있어요.',
+      '포도 무늬 옷을 입은 왕이 황소 장식 왕좌에 앉아 펜타클을 들고 있고, 뒤로 성이 있어요.',
+    ],
+  };
+  CARDS.forEach(c => { c.pic = c.arcana === 'major' ? MAJOR_PIC[c.id] : SUIT_PIC[c.suitKey][c.rank - 1]; });
+
   // ---------- 리딩 도우미 데이터 (참고자료: 초보자 3장 리딩) ----------
   // 수트 역할: "컵은 느끼고, 완드는 움직이고, 소드는 생각하고, 펜타클은 현실로 만든다"
   const SUIT_INFO = {
@@ -1148,6 +1254,8 @@ window.TAROT_CONFIG = {
     '[숫자 흐름] 숫자가 이어지면 흐름으로 읽는다(예: 2→3→4 = 선택→확장→안정). 숫자가 뒤섞여 있으면 억지로 맞추지 말고 자리의 의미를 먼저 본다.',
     '[미래·결과 자리] 확정된 미래나 경고가 아니라 지금의 선택과 행동이 이어질 때의 가능성이며, 조정할 수 있는 방향이다. "앞으로 힘들어집니다" 대신 "이대로 계속 가면 ~할 수 있으니, 지금부터 ~해 보면 좋겠어요"처럼 말한다. 좋지 않아 보이는 카드라도 겁주지 않는다.',
     '[마무리] 마지막은 반드시 "그래서 지금 할 수 있는 것" 하나로 끝낸다. 어려운 말보다, 듣는 사람이 "아, 내가 지금 왜 이런지 알겠어요", "그럼 이렇게 해 볼게요"라고 말할 수 있게 쉽고 구체적으로 쓴다.',
+    '[그림 읽기] 각 카드의 picture에는 입력된 "그림" 묘사 속 구체적인 요소(인물·자세·표정·사물·배경)를 하나 이상 짚고, 그것이 이 자리(포지션)에서 무엇을 뜻하는지 이어서 쓴다. 형식: "그림 속 ○○(이)가 ~하고 있어요. 이 모습은 [자리]에서 ~을 보여 줘요." 1~2문장. 역방향이면 그림이 거꾸로 놓였다는 점을 활용한다. 입력된 그림 묘사에 없는 요소는 지어내지 않는다.',
+    '[해석과 그림 연결] message·interpretation은 picture에서 짚은 그림 요소를 바탕으로 이어서 풀어 쓰고, picture 문장을 그대로 반복하지 않는다.',
     '[한 줄 리딩] one_line은 "지금은 ○○한 상황이고, 마음은 ○○한 상태예요. 그래서 지금은 ○○해 보는 것이 좋아요."의 흐름으로 2~3문장, 해요체로 쓴다. 카드 이름은 넣지 않는다.',
   ];
 
@@ -1163,7 +1271,7 @@ window.TAROT_CONFIG = {
   const STUDENT_SCHEMA = `{
   "title": "결과를 한 줄로 표현한 제목 (20자 이내, 따뜻하게)",
   "one_line": "한 줄 리딩: 상황 → 마음 → 지금 해 볼 것으로 이어지는 2~3문장",
-  "cards": [ { "position": "자리 이름", "message": "이 자리에서 카드가 전하는 메시지 2~3문장 (자리 역할과 이야기 흐름에 맞춰)" } ],
+  "cards": [ { "position": "자리 이름", "picture": "그림 읽기: 그림 속 요소 → 이 자리에서의 의미 1~2문장", "message": "이 자리에서 카드가 전하는 메시지 2~3문장 (자리 역할과 이야기 흐름에 맞춰)" } ],
   "action": "오늘 해 볼 수 있는 작은 행동 1가지 (구체적으로)",
   "cheer": "응원 한마디 1문장",
   "safety": ""
@@ -1194,7 +1302,7 @@ window.TAROT_CONFIG = {
   const COUNSELOR_SCHEMA = `{
   "one_line": "내담자에게 전할 한 줄 리딩 2~3문장 (해요체, 상황 → 마음 → 지금 해 볼 것)",
   "overview": "배열 전체 흐름과 패턴 분석 3~4문장 (자리 → 수트 → 숫자·인물 카드 순서로)",
-  "cards": [ { "position": "자리 이름", "interpretation": "자리와 주제에 맞춘 해석 2~3문장", "counseling_point": "상담 활용 포인트 1~2문장" } ],
+  "cards": [ { "position": "자리 이름", "picture": "그림 읽기: 그림 속 요소 → 이 자리에서의 의미 1~2문장", "interpretation": "자리와 주제에 맞춘 해석 2~3문장", "counseling_point": "상담 활용 포인트 1~2문장" } ],
   "connections": "카드 간 연결 2~3문장 (수트 역할: 느끼고·움직이고·생각하고·현실로 만들고 / 숫자 흐름)",
   "questions": ["내담자 탐색 질문 4~5개 (카드 그림 속 인물의 표정·방향·움직임을 활용한 질문 1개 이상 포함)"],
   "action": "내담자와 함께 정할 수 있는 행동 하나 (구체적으로)",
@@ -1205,7 +1313,7 @@ window.TAROT_CONFIG = {
   const COUNSELOR_BRIEF_SCHEMA = `{
   "one_line": "내담자에게 전할 한 줄 리딩 2문장 (해요체)",
   "overview": "전체 흐름 2문장",
-  "cards": [ { "position": "자리 이름", "interpretation": "핵심 해석 1문장", "counseling_point": "" } ],
+  "cards": [ { "position": "자리 이름", "picture": "그림 속 요소 → 이 자리에서의 의미 1문장", "interpretation": "핵심 해석 1문장", "counseling_point": "" } ],
   "questions": ["내담자 탐색 질문 3개"],
   "action": "함께 정할 행동 하나",
   "risk": ""
@@ -1238,7 +1346,8 @@ window.TAROT_CONFIG = {
     L.push('뽑힌 카드 (자리 의미에 맞춰 해석할 것):');
     req.cards.forEach((c, i) => {
       L.push(`${i + 1}. [${clip(c.position, 50)}] ${clip(c.name, 60)} — ${c.reversed ? '역방향' : '정방향'} / ${clip(c.suit, 20)} / 키워드: ${clip(c.keywords, 80)}` +
-        (c.positionDesc ? `\n   자리 의미: ${clip(c.positionDesc, 120)}` : ''));
+        (c.positionDesc ? `\n   자리 의미: ${clip(c.positionDesc, 120)}` : '') +
+        (c.picture ? `\n   그림: ${clip(c.picture, 200)}` : ''));
     });
     return { system, user: L.join('\n') };
   }
@@ -1255,17 +1364,17 @@ window.TAROT_CONFIG = {
   const arr = items => ({ type: 'ARRAY', items });
   const SCHEMA_STUDENT = obj({
     title: STR, one_line: STR,
-    cards: arr(obj({ position: STR, message: STR })),
+    cards: arr(obj({ position: STR, picture: STR, message: STR })),
     action: STR, cheer: STR, safety: STR,
   });
   const SCHEMA_COUNSELOR = obj({
     one_line: STR, overview: STR,
-    cards: arr(obj({ position: STR, interpretation: STR, counseling_point: STR })),
+    cards: arr(obj({ position: STR, picture: STR, interpretation: STR, counseling_point: STR })),
     connections: STR, questions: arr(STR), action: STR, cautions: STR, risk: STR,
   });
   const SCHEMA_COUNSELOR_BRIEF = obj({
     one_line: STR, overview: STR,
-    cards: arr(obj({ position: STR, interpretation: STR, counseling_point: STR }, ['position', 'interpretation'])),
+    cards: arr(obj({ position: STR, picture: STR, interpretation: STR, counseling_point: STR }, ['position', 'picture', 'interpretation'])),
     questions: arr(STR), action: STR, risk: STR,
   });
   function responseSchemaFor(req) {
@@ -2491,6 +2600,7 @@ window.TAROT_CONFIG = {
         return {
           position: S.spread.pos[i], positionDesc: (S.spread.desc || [])[i] || '',
           name: c.name, suit: c.suit, reversed: p.rev, keywords: p.rev ? c.rev : c.up,
+          picture: c.pic, // 그림 묘사 → AI가 "그림의 어느 부분"에서 나온 해석인지 설명하도록
         };
       }),
     };
@@ -2595,8 +2705,11 @@ window.TAROT_CONFIG = {
       const card = A.cards[i];
       const text = [`이 자리에는 '${c.keywords}'의 기운이 있어요.`, roleOf(card), stageTxt(card),
         c.reversed ? revTxt : '', isFuture(c.position) ? futTxt : ''].filter(Boolean).join(' ');
-      return student ? { position: c.position, message: text } : {
-        position: c.position, interpretation: text,
+      // 그림 읽기: 그림 속 장면 → 이 자리에서의 의미
+      const picture = `${c.picture} 이 모습이 '${c.position}' 자리에서는 '${first(c.keywords)}'의 기운을 보여 줘요.` +
+        (c.reversed ? ' 지금은 그림이 거꾸로 놓여 있어서, 이 기운이 막히거나 마음 안쪽으로 향해 있을 수 있어요.' : '');
+      return student ? { position: c.position, picture, message: text } : {
+        position: c.position, picture, interpretation: text,
         counseling_point: `${c.positionDesc ? `[${c.position}] ${c.positionDesc}. ` : ''}'${first(c.keywords)}'${jo(first(c.keywords), '이라는', '라는')} 말에서 떠오르는 경험이나 장면을 물어보세요.`,
       };
     });
@@ -2675,10 +2788,13 @@ window.TAROT_CONFIG = {
     }
     const cardItem = (i, inner) => {
       const p = S.picks[i]; const c = CARDS[p.id];
+      // 그림 읽기: AI가 쓴 그림 설명(없으면 카드의 그림 묘사)을 해석 위에 보여 줌
+      const pic = (dc[i] || {}).picture || c.pic;
       return `<div class="box card-read">
-        <div class="thumb"><img class="${p.rev ? 'rev' : ''}" src="${c.img}" alt=""></div>
+        <button class="thumb" data-zoom="${i}" aria-label="${esc(c.name)} 그림 크게 보기"><img class="${p.rev ? 'rev' : ''}" src="${c.img}" alt=""><span class="zoom-hint">🔍</span></button>
         <div><div class="pos">${i + 1}. ${esc(S.spread.pos[i])}</div>
           ${(S.spread.desc || [])[i] ? `<div class="pdesc">${esc(S.spread.desc[i])}</div>` : ''}
+          ${pic ? `<div class="pic-read"><b>🖼️ 그림 읽기</b>${esc(pic)}</div>` : ''}
           <div class="nm">${esc(c.name)}${p.rev ? '<span class="badge-rev">역방향</span>' : ''}</div>
           <div class="kw">${esc(p.rev ? c.rev : c.up)}</div>${inner}</div></div>`;
     };
@@ -2708,7 +2824,21 @@ window.TAROT_CONFIG = {
     html += `<p class="note">타로는 예언이 아니라 생각을 정리하는 도구예요.</p>`;
     body.innerHTML = html;
     M.stagger($$('#resultHead > *, #crisisBox > *, #resultBody > *'), { delay: 110, y: 26, duration: 600, max: 1600 });
-    $$('#resultBody .thumb').forEach(t => M.tilt(t, 18));
+    $$('#resultBody .thumb').forEach(t => {
+      M.tilt(t, 18);
+      t.onclick = () => zoomCard(Number(t.dataset.zoom));
+    });
+  }
+
+  // 카드 그림 크게 보기 (그림 읽기에서 말한 부분을 직접 찾아볼 수 있게)
+  function zoomCard(i) {
+    const p = S.picks[i]; const c = CARDS[p.id];
+    modal(`<div class="zoom-box">
+        <div class="zoom-pos">${i + 1}. ${esc(S.spread.pos[i])}</div>
+        <img class="zoom-img ${p.rev ? 'rev' : ''}" src="${c.img}" alt="${esc(c.name)}">
+        <div class="zoom-name">${esc(c.name)}${p.rev ? ' <span class="badge-rev">역방향</span>' : ''}</div>
+        <p class="zoom-pic">${esc(c.pic)}</p>
+      </div>`, [{ label: '닫기', value: true, primary: true }]);
   }
 
   function resultText() {
@@ -2726,6 +2856,7 @@ window.TAROT_CONFIG = {
     S.picks.forEach((p, i) => {
       const c = CARDS[p.id]; const x = dc[i] || {};
       L.push(`${i + 1}. [${S.spread.pos[i]}] ${c.name}${p.rev ? ' (역방향)' : ''}`);
+      if (x.picture) L.push('   [그림] ' + x.picture);
       if (x.message) L.push('   ' + x.message);
       if (x.interpretation) L.push('   ' + x.interpretation);
       if (x.counseling_point) L.push('   → ' + x.counseling_point);
