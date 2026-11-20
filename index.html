@@ -130,16 +130,6 @@ h2 { font-size: 1.15rem; margin: 24px 0 10px; }
 .mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
 .mode-card .mode-tag { font-style: normal; font-size: .72rem; margin-top: 4px; padding: 2px 8px; border-radius: 99px; background: var(--surface-strong); color: var(--muted); }
 .mode-card.general { background: linear-gradient(160deg, rgba(201,182,255,.18), var(--surface)); }
-/* 좁은 폰: 세 칸이 비좁으면 가로형 목록으로 */
-@media (max-width: 460px) {
-  .mode-grid { grid-template-columns: 1fr; }
-  .mode-card { flex-direction: row; flex-wrap: wrap; text-align: left; padding: 16px; column-gap: 12px; row-gap: 2px; }
-  .mode-card .mode-emoji { font-size: 1.8rem; }
-  .mode-card strong { flex: 1; }
-  .mode-card span:not(.mode-emoji) { flex-basis: 100%; }
-  .mode-card span:not(.mode-emoji) br { display: none; }
-  .mode-card .mode-tag { margin-top: 0; }
-}
 .mode-card {
   position: relative; overflow: hidden; transition: transform .2s, background .2s, box-shadow .2s;
   display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
@@ -152,6 +142,21 @@ h2 { font-size: 1.15rem; margin: 24px 0 10px; }
 .mode-card .mode-emoji { font-size: 2rem; }
 .mode-card.student { background: linear-gradient(160deg, rgba(255,179,167,.18), var(--surface)); }
 .mode-card.counselor { background: linear-gradient(160deg, rgba(159,210,199,.16), var(--surface)); }
+/* 세로로 든 폰(좁은 화면): 세 칸 대신 세로 목록. 왼쪽 이모지, 오른쪽에 제목·설명·태그.
+   ※ 반드시 기본 .mode-card 규칙 '뒤'에 둬야 덮어써지지 않음 */
+@media (max-width: 560px) {
+  .mode-grid { grid-template-columns: 1fr; gap: 12px; }
+  .mode-card {
+    display: grid; grid-template-columns: 56px minmax(0, 1fr); grid-template-areas: "emoji title" "emoji desc" "emoji tag";
+    justify-items: start; align-items: center; column-gap: 14px; row-gap: 2px;
+    text-align: left; padding: 16px 18px;
+  }
+  .mode-card .mode-emoji { grid-area: emoji; justify-self: center; font-size: 2.2rem; }
+  .mode-card strong { grid-area: title; font-size: 1.15rem; }
+  .mode-card > span:not(.mode-emoji) { grid-area: desc; min-width: 0; }
+  .mode-card > span:not(.mode-emoji) br { display: none; }       /* 줄바꿈은 없애고 글이 폭에 맞춰 자연스럽게 넘어가게 (HTML에 공백이 있음) */
+  .mode-card .mode-tag { grid-area: tag; margin-top: 4px; }
+}
 .footnote { text-align: center; color: var(--muted); font-size: 0.82rem; margin-top: 24px; }
 
 /* 준비 */
@@ -495,19 +500,19 @@ html.motion-off *, html.motion-off *::before, html.motion-off *::after { animati
         <button class="mode-card student" data-mode-pick="student">
           <span class="mode-emoji">🌱</span>
           <strong>학생용</strong>
-          <span>내 마음을 알아보고<br>오늘의 응원을 받아요</span>
+          <span>내 마음을 알아보고 <br>오늘의 응원을 받아요</span>
           <em class="mode-tag">카드를 직접 뽑아요</em>
         </button>
         <button class="mode-card general" data-mode-pick="general">
           <span class="mode-emoji">🌙</span>
           <strong>일반용</strong>
-          <span>지금의 고민을<br>차분히 정리해 봐요</span>
+          <span>지금의 고민을 <br>차분히 정리해 봐요</span>
           <em class="mode-tag">카드를 직접 뽑아요</em>
         </button>
         <button class="mode-card counselor" data-mode-pick="counselor">
           <span class="mode-emoji">🗝️</span>
           <strong>상담자용</strong>
-          <span>상담 포인트와<br>탐색 질문을 함께 봐요</span>
+          <span>상담 포인트와 <br>탐색 질문을 함께 봐요</span>
           <em class="mode-tag">실물 카드와 맞춰 골라요</em>
         </button>
       </div>
