@@ -1,0 +1,8 @@
+# 절대 올리지 않을 파일 (API 키·원본 시트·저작권 자료)
+apikey.js
+*.key
+*.env
+*.csv
+*.gsheet
+*.pdf
+참고자료/
