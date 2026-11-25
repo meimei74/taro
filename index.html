@@ -495,6 +495,14 @@ html.motion-off *, html.motion-off *::before, html.motion-off *::after { animati
 }
 .pic-read b .src-badge { margin: 0 0 0 6px; font-weight: 400; vertical-align: 1px; }
 
+/* 역방향: 섞는 동안 거꾸로 놓이게 될 카드가 빙글 돎 */
+.deck-card.spin { animation: cardSpin .6s cubic-bezier(.4, 0, .2, 1); }
+@keyframes cardSpin { from { transform: rotate(var(--rot, 0deg)); } to { transform: rotate(calc(var(--rot, 0deg) + 360deg)); } }
+html.motion-off .deck-card.spin { animation: none; }
+.rev-hint { margin: 2px 0 12px; }
+.rev-tip { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--surface-strong); border: 1px dashed var(--line); font-size: .82rem; line-height: 1.55; color: var(--muted); }
+.rev-tip b { color: var(--text, inherit); }
+
 </style>
 </head>
 <body data-mode="">
@@ -588,6 +596,7 @@ html.motion-off *, html.motion-off *::before, html.motion-off *::after { animati
         <label class="switch"><input type="checkbox" id="optReversed"><span></span>역방향 카드 사용</label>
         <label class="switch counselor-only"><input type="checkbox" id="optBrief"><span></span>간단 응답</label>
       </div>
+      <p class="hint rev-hint" id="revHint"></p>
 
       <button class="btn primary big" id="btnStart">카드 섞기</button>
     </section>
@@ -606,6 +615,7 @@ html.motion-off *, html.motion-off *::before, html.motion-off *::after { animati
     <!-- 3-2. 상담자용: 실물 카드와 같은 카드 고르기 -->
     <section class="screen" id="pick">
       <p class="draw-guide" id="pickGuide"></p>
+      <p class="rev-tip hidden" id="pickRevTip">🔄 <b>역방향 사용 중</b> — 실물 카드는 테이블에 펼쳐 둥글게 섞어 주세요. 뒤집을 때는 <b>책장 넘기듯 옆으로</b> 뒤집고, 놓인 방향 그대로 '정방향 / 역방향 ↻'을 골라 주세요. 위아래로 뒤집으면 방향이 바뀌어요.</p>
       <div class="search-row">
         <input type="search" id="cardSearch" class="input" placeholder="🔍 카드 검색 (예: 13, 죽음, 컵 3, tower)" autocomplete="off" enterkeyhint="search" aria-label="카드 검색">
       </div>
@@ -2040,7 +2050,8 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     $('#question').value = ''; $('#clientInfo').value = '';
     $('#choiceA').value = ''; $('#choiceB').value = ''; S.choiceA = ''; S.choiceB = '';
     BIRTH_FIELDS.forEach(s => { $(s).value = ''; });
-    $('#optReversed').checked = mode === 'counselor';
+    $('#optReversed').checked = mode !== 'student'; // 기본값: 학생용만 끔 (거꾸로 나온 카드를 나쁜 결과로 받아들이기 쉬워서)
+    renderRevHint();
     $('#optBrief').checked = false;
     setDeckType(store.get('deck.' + mode, 'all')); // 모드별로 마지막 선택 기억
     go('setup');
@@ -2180,12 +2191,21 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     });
   });
 
+  // 역방향 스위치 아래 설명 (켬/끔, 용도에 따라)
+  function renderRevHint() {
+    const on = $('#optReversed').checked;
+    $('#revHint').textContent = !on ? '모든 카드를 정방향으로 읽어요.'
+      : (S.mode === 'counselor' ? '실물 카드를 섞을 때 거꾸로 놓인 카드를 그대로 읽어요. ' : '카드를 섞을 때 일부 카드가 거꾸로 놓여요. ')
+        + '거꾸로 나온 카드는 나쁜 카드가 아니라, 본래 에너지가 막히거나 지나친 상태로 읽어요.';
+  }
+  $('#optReversed').addEventListener('change', renderRevHint);
   function updateSetupVisibility() {
     const isBirth = S.topic && S.topic.id === 'birth';
     $('#deckOpt').classList.toggle('hidden', !!isBirth); // 탄생 카드는 항상 메이저로 계산
     $('#birthBox').classList.toggle('hidden', !isBirth);
     $('#spreadBox').classList.toggle('hidden', !!isBirth);
     $('#optReversed').closest('label').classList.toggle('hidden', !!isBirth);
+    $('#revHint').classList.toggle('hidden', !!isBirth);
     $('#btnStart').textContent = isBirth ? '탄생 카드 찾기' : S.mode === 'counselor' ? '카드 고르기 (실물 카드와 맞추기)' : '카드 섞기';
   }
   function renderSpreadPreview(animate) {
@@ -2337,15 +2357,20 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     });
     placeDeck('stack');
     renderTray();
-    $('#drawGuide').textContent = '카드를 섞고 있어요…';
+    $('#drawGuide').textContent = S.reversedOn ? '카드를 섞고 있어요… 일부 카드는 거꾸로 놓여요' : '카드를 섞고 있어요…';
     if (M.ON) {
       await M.wait(380);
+      // 역방향 사용: 섞는 동안 실제로 거꾸로 놓이게 될 카드들이 빙글 돌아감 (워시 셔플처럼 방향이 섞이는 모습)
+      const revEls = S.reversedOn ? Array.from(deck.children).filter((_, i) => S.deck[i].rev) : [];
       for (let r = 0; r < 3; r++) {
         if (my !== drawToken) return;
-        placeDeck('split'); await M.wait(320);
+        placeDeck('split');
+        revEls.filter((_, k) => k % 3 === r).forEach(el => { el.classList.remove('spin'); void el.offsetWidth; el.classList.add('spin'); });
+        await M.wait(320);
         if (my !== drawToken) return;
         placeDeck('stack'); await M.wait(320);
       }
+      revEls.forEach(el => el.classList.remove('spin'));
     }
     if (my !== drawToken) return;
     deck.classList.remove('fast');
@@ -2527,6 +2552,7 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     const done = nx < 0;
     $('#btnPickDone').disabled = !done;
     $('#btnPickDone').classList.toggle('pulse', done);
+    $('#pickRevTip').classList.toggle('hidden', !S.reversedOn);
     $('#pickGuide').innerHTML = done
       ? '카드를 모두 골랐어요. <b>배열 보기</b>를 눌러 주세요'
       : `학생이 고른 실물 카드와 같은 카드를 눌러 주세요 · <b>${nx + 1}번 '${esc(pos[nx])}'</b>`;
@@ -3117,7 +3143,6 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
       html += helperHtml(true); // 리딩 도우미 (접힌 상태)
     }
     if (r.note) html += `<p class="note">${esc(r.note)}</p>`;
-    html += `<p class="note">📖 해석 내용은 모두 카드 데이터베이스${FACTS.files.length ? `(${esc(FACTS.files.join(', '))})` : ''}에서 가져왔어요.${r.ai ? ' AI는 문장만 다듬었어요.' : ''}${r.check && r.check.replaced ? ` 자료와 맞지 않는 ${r.check.replaced}곳은 자료 원문으로 바꿨어요.` : ''} 카드마다 '자료 근거'를 눌러 확인할 수 있어요.</p>`;
     html += `<p class="note">타로는 예언이 아니라 생각을 정리하는 도구예요.</p>`;
     body.innerHTML = html;
     M.stagger($$('#resultHead > *, #crisisBox > *, #resultBody > *'), { delay: 110, y: 26, duration: 600, max: 1600 });
