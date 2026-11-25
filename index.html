@@ -503,6 +503,11 @@ html.motion-off .deck-card.spin { animation: none; }
 .rev-tip { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--surface-strong); border: 1px dashed var(--line); font-size: .82rem; line-height: 1.55; color: var(--muted); }
 .rev-tip b { color: var(--text, inherit); }
 
+/* 반대 방향 참고 한 줄 */
+.card-read .opp { margin: -2px 0 8px; padding: 5px 10px; border-radius: 8px; background: var(--surface-strong); font-size: .8rem; line-height: 1.5; color: var(--muted); }
+.card-read .opp b { color: var(--accent); font-weight: 600; margin-right: 2px; }
+.card-read .opp-core { display: block; margin-top: 2px; }
+
 </style>
 </head>
 <body data-mode="">
@@ -1346,6 +1351,12 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     const core = byDir(d.core), adviceText = byDir(d.advice);
     add('core', '핵심 의미', core);
     add('kw', `${dirKo} 키워드`, rev ? d.kw && d.kw.rev : d.kw && d.kw.up);
+    // 역방향 카드: 본래 의미(정방향)를 함께 — "본래 ~한 카드인데, 지금은 ~한 상태"로 이어 쓰기 위해
+    if (rev) {
+      const baseCore = d.core && typeof d.core === 'object' ? d.core.up : '';
+      add('base', '본래 의미(정방향) 핵심', baseCore);
+      add('base', '본래 의미(정방향) 키워드', d.kw && d.kw.up);
+    }
     if (c.pic) add('pic', '그림 장면', c.pic);
     if (d.sym && d.sym.length) {
       add('sym', '그림 상징', d.sym.slice(0, 16).map(s => s.name ? `${s.name} — ${s.mean}` : s.mean).join(' / '));
@@ -1391,6 +1402,18 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
   }
 
   // 배열 전체의 사실 + 카드별 번호 (F카드번호-항목번호)
+  // 결과 화면의 참고 한 줄: 반대 방향 (역방향 사용이 켜져 있을 때만)
+  // 정방향 카드 → "거꾸로 나왔다면", 역방향 카드 → "본래 의미(정방향)". 상담자용은 핵심 의미 첫 문장까지
+  function oppositeRef(id, rev, mode) {
+    const d = D.cards[String(id)] || {};
+    const fix = t => { t = words(t); return mode === 'student' ? studentSafe(t) : t; };
+    const kw = fix(d.kw && (rev ? d.kw.up : d.kw.rev)).split(/,\s*/).filter(Boolean).slice(0, 6).join(', ');
+    const coreObj = d.core && typeof d.core === 'object' ? d.core : null;
+    const core = mode === 'counselor' && coreObj ? firstSentence(fix(rev ? coreObj.up : coreObj.rev)) : '';
+    if (!kw && !core) return null;
+    return { label: rev ? '본래 의미(정방향)' : '거꾸로 나왔다면', icon: rev ? '↺' : '↻', kw, core };
+  }
+
   function build(req) {
     const cards = req.cards.map((x, i) => {
       const facts = cardFacts({ id: x.id, rev: x.rev, topicId: req.topicId, position: x.position, mode: req.mode, index: i, total: req.cards.length });
@@ -1448,7 +1471,7 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     }).slice(0, 6);
   }
 
-  window.TAROT_FACTS = { build, cardFacts, words, studentSafe, groundScore, addedMarkers, missingWords, has: !!window.TAROT_DB_DATA, files: D.files || [] };
+  window.TAROT_FACTS = { build, cardFacts, oppositeRef, words, studentSafe, groundScore, addedMarkers, missingWords, has: !!window.TAROT_DB_DATA, files: D.files || [] };
 })();
 
 </script>
@@ -1470,6 +1493,8 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     '자료 문장의 긍정·부정 뉘앙스와 주어를 바꾸지 않는다. 자리 이름에 맞추려고 자료의 뜻을 뒤집거나 비틀지 않는다(예: 축하·결실 자료를 "부담을 주는 것" 자리라는 이유로 "축하가 오히려 부담이 된다"로 바꾸지 않는다). 자리와 맞지 않아 보여도 자료의 뜻 그대로 전한다.',
     '한 카드의 글에는 그 카드 번호(F1-…, F2-…)의 자료만 쓴다. 다른 카드의 자료를 섞지 않는다. 자료가 여러 개면 질문·주제·자리와 직접 관련된 것을 골라 쓰고, 모두 쓸 필요는 없다.',
     '자리 이름과 자리 의미는 "이 자리에서는 ~"처럼 연결하는 데만 쓴다. 자리 의미를 근거로 자료에 없는 새 내용을 만들지 않는다.',
+    '역방향 카드에는 [본래 의미(정방향)] 자료가 함께 있다. 역방향 카드의 글은 "본래 ~한 카드인데, 지금은 ~한 상태예요"처럼 본래 의미 자료에서 역방향 자료로 이어서 쓴다. 중심은 역방향 자료이고, 본래 의미는 앞부분 한 구절로만 쓴다. "반대로", "오히려", "하지만 반대로" 같은 표현은 쓰지 않고 "~인데, 지금은 ~"으로 잇는다. 정방향 카드에는 정방향 자료만 쓴다.',
+    '역방향은 나쁜 카드가 아니다. 본래 에너지가 막히거나, 지나치거나, 안으로 향한 상태로 전한다. 역방향 자료의 뜻은 그대로 전하되 겁주는 말투를 쓰지 않는다.',
     'picture는 그 카드의 [그림 장면]·[그림 상징] 자료만으로 쓴다: 그림 속 요소 → 자료에 적힌 그 요소의 뜻. 자료에 없는 그림 요소를 지어내지 않는다.',
     'one_line은 각 카드 글(message 또는 interpretation)에 이미 쓴 구절을 그대로 가져와 이어 붙인다. 구절을 다른 낱말로 바꾸거나("극복하면", "차근차근", "나만의 길" 같은 새 표현) 새 의미를 더하지 않는다. 카드 이름은 넣지 않는다.',
     'action은 [조언 / 리딩 포인트] 자료 가운데 질문에 가장 맞는 문장 하나를 골라, 그 문장의 낱말을 그대로 쓰고 끝맺음만 "~해 보세요"(상담자용은 "~하도록 돕습니다" 등)로 바꾼다. 여러 조언을 섞거나, 구체적인 방법·때·대상("잠시 멈춰", "동료와", "건강검진", "전문가 상담")을 새로 붙이지 않는다. 조언 자료가 질문과 맞지 않으면 같은 카드의 다른 자료 문장 하나로 같은 방법을 쓴다. action_src에는 그 자료 번호를 적는다.',
@@ -1619,7 +1644,8 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
 
   async function read(key, model, req, timeoutMs) {
     const p = buildPrompt(req);
-    const send = withSchema => fetchWithTimeout(API + encodeURIComponent(model) + ':generateContent', {
+    const t0 = Date.now();
+    const send = (withSchema, tm) => fetchWithTimeout(API + encodeURIComponent(model) + ':generateContent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
@@ -1630,14 +1656,14 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
         generationConfig: Object.assign({ responseMimeType: 'application/json', maxOutputTokens: 8192 },
           withSchema ? { responseSchema: responseSchemaFor(req) } : {}),
       }),
-    }, timeoutMs);
+    }, tm || timeoutMs);
     // 한 번 요청해서 JSON으로 꺼냄
-    const once = async () => {
-      let res = await send(true);
+    const once = async tm => {
+      let res = await send(true, tm);
       let json = await res.json().catch(() => ({}));
       // 모델이 응답 형식 지정(또는 카드 수 제한)을 지원하지 않으면 형식 지정 없이 한 번 더
       if (res.status === 400 && /schema|response_?schema|mime|items/i.test((json.error && json.error.message) || '')) {
-        res = await send(false);
+        res = await send(false, tm);
         json = await res.json().catch(() => ({}));
       }
       if (!res.ok) throw errorFor(res.status, (json.error && json.error.message) || '', model);
@@ -1670,7 +1696,10 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     // 카드가 모자라게 오면 한 번만 다시 요청 (그래도 모자라면 앱의 검사가 빠진 카드를 자료 원문으로 채움)
     if (short(data)) {
       if (window.TAROT_DEBUG) console.warn(`AI 응답 카드 ${Array.isArray(data.cards) ? data.cards.length : 0}/${need}장 — 다시 요청`);
-      try { const again = await once(); if (!short(again)) data = again; } catch (e) { /* 첫 응답을 그대로 씀 */ }
+      // 다시 요청은 남은 시간만 (전체 대기가 두 배로 늘지 않게, 최소 15초)
+      const left = Math.max(15000, (timeoutMs || 60000) - (Date.now() - t0));
+      const cnt = d => Array.isArray(d.cards) ? d.cards.length : 0;
+      try { const again = await once(left); if (cnt(again) > cnt(data)) data = again; } catch (e) { /* 첫 응답을 그대로 씀 */ }
     }
     return data;
   }
@@ -2865,7 +2894,7 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     if (data && window.TAROT_DEBUG) window.TAROT_LAST_RAW = JSON.parse(JSON.stringify(data));
     if (data) check = verifyReading(data, payload, base);
     else data = base;
-    S.result = { data, note, ai: !note, check, facts: payload.cards.map(c => c.facts), patterns: payload.patterns };
+    S.result = { data, note, ai: !note, check, reversedOn: S.reversedOn && S.topic.id !== 'birth', facts: payload.cards.map(c => c.facts), patterns: payload.patterns };
     if ($('#result').classList.contains('active')) renderResult();
   }
 
@@ -2943,8 +2972,10 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
       const main = area.length ? area : fx(i, 'core');
       const k = kwFact(i);
       const fin = t => { t = String(t).trim(); return /[.!?)]$/.test(t) ? t : t + '.'; }; // 문장 끝 마침표 통일
-      const text = main.map(f => fin(f.text)).join(' ') + (k ? ` (${k.label}: ${k.text})` : '');
-      const src = ids(main.concat(k ? [k] : []));
+      const base = c.reversed ? fx(i, 'base').find(f => /핵심/.test(f.label)) : null;
+      const baseTxt = base ? `본래 의미는 "${String(base.text).split(/[.。]/)[0].trim()}"인데, 지금은 카드가 거꾸로 놓여 있어요. ` : '';
+      const text = baseTxt + main.map(f => fin(f.text)).join(' ') + (k ? ` (${k.label}: ${k.text})` : '');
+      const src = ids((base ? [base] : []).concat(main, k ? [k] : []));
       // 그림: 그림 장면 + 그림 상징 앞부분
       const pic = fx(i, 'pic')[0], sym = fx(i, 'sym')[0];
       const symTxt = sym ? sym.text.split(' / ').slice(0, 2).join(' / ') : '';
@@ -3029,7 +3060,7 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
       const b = base.cards[i];
       const c = p.cards[i];
       const own = id => id.startsWith(`F${i + 1}-`);
-      const extra = `${c.name} ${c.position} ${c.positionDesc}`;
+      const extra = `${c.name} ${c.position} ${c.positionDesc}` + (c.reversed ? ' 본래 의미 카드인데 지금은 거꾸로 놓여 에너지가 막히거나 지나치거나 안으로 향한 상태' : '');
       if (!test(`${i + 1}번 카드 글`, x[field], x.src, own, extra)) { x[field] = b[field]; x.src = b.src; x._fb = true; }
       const picOwn = id => own(id) && /^(pic|sym)$/.test((all[id] || {}).kind);
       if (!test(`${i + 1}번 그림 읽기`, x.picture, x.picture_src, picOwn, extra, GROUND_MIN.picture)) { x.picture = b.picture; x.picture_src = b.picture_src; x._fbPic = true; }
@@ -3099,6 +3130,12 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     if (isCounselor() && (risk || crisisLocal)) {
       $('#crisisBox').innerHTML = `<div class="alert"><strong>⚠ 위기 신호 확인</strong><p style="margin:6px 0 0">${esc(risk || '질문에 위기 관련 표현이 있습니다. 해석보다 안전 확인과 위기 평가를 우선해 주세요.')}</p></div>`;
     }
+    // 역방향 사용 중일 때 반대 방향을 한 줄로 (정방향 카드 → 거꾸로 나왔다면 / 역방향 카드 → 본래 의미)
+    const oppHtml = p => {
+      if (!r.reversedOn) return '';
+      const o = FACTS.oppositeRef(p.id, p.rev, S.mode);
+      return o ? `<div class="opp"><b>${o.icon} ${esc(o.label)}</b> ${esc(o.kw)}${o.core ? `<span class="opp-core">${esc(o.core)}</span>` : ''}</div>` : '';
+    };
     const cardItem = (i, inner) => {
       const p = S.picks[i]; const c = CARDS[p.id];
       // 그림 읽기: AI가 쓴 그림 설명(없으면 카드의 그림 묘사)을 해석 위에 보여 줌
@@ -3109,7 +3146,7 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
           ${(S.spread.desc || [])[i] ? `<div class="pdesc">${esc(S.spread.desc[i])}</div>` : ''}
           ${pic ? `<div class="pic-read"><b>🖼️ 그림 읽기${(dc[i] || {})._fbPic && r.ai ? ' <span class="src-badge" title="AI 문장이 자료 검사를 통과하지 못해 자료 원문을 그대로 보여 줘요">📖 자료 원문</span>' : ''}</b>${esc(pic)}</div>` : ''}
           <div class="nm">${esc(c.name)}${p.rev ? '<span class="badge-rev">역방향</span>' : ''}</div>
-          <div class="kw">${esc(p.rev ? c.rev : c.up)}</div>${(dc[i] || {})._fb && r.ai ? '<span class="src-badge" title="AI 문장이 자료 검사를 통과하지 못해 자료 원문을 그대로 보여 줘요">📖 자료 원문</span>' : ''}${inner}${evidenceHtml(i)}</div></div>`;
+          <div class="kw">${esc(p.rev ? c.rev : c.up)}</div>${oppHtml(p)}${(dc[i] || {})._fb && r.ai ? '<span class="src-badge" title="AI 문장이 자료 검사를 통과하지 못해 자료 원문을 그대로 보여 줘요">📖 자료 원문</span>' : ''}${inner}${evidenceHtml(i)}</div></div>`;
     };
     // 자료 근거: 이 카드에 쓰인 데이터베이스 문장 (AI가 쓴 번호는 강조)
     const evidenceHtml = i => {
@@ -3117,7 +3154,7 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
       if (!facts.length) return '';
       const x = dc[i] || {};
       const used = new Set([].concat(x.src || [], x.picture_src || []).map(String));
-      return `<details class="evidence"><summary>📖 자료 근거 <small>${used.size ? `${used.size}개 사용` : ''}${x._fb ? ' · 자료 원문' : ''}</small></summary>
+      return `<details class="evidence"><summary>📖 자료 근거 <small>${used.size ? `${used.size}개 사용` : ''}${x._fb && x._fbPic ? ' · 자료 원문' : x._fb ? ' · 본문 원문' : x._fbPic ? ' · 그림 원문' : ''}</small></summary>
         <ul>${facts.map(f => `<li class="${used.has(f.id) ? 'used' : ''}">${used.has(f.id) ? `<em class="fid">${esc(f.id)}</em>` : ''}<b>${esc(f.label)}</b> ${esc(f.text)}</li>`).join('')}</ul></details>`;
     };
     const dc = alignCards(d.cards);
@@ -3178,6 +3215,8 @@ window.TAROT_DB_DATA = {"cards":{"0":{"areas":{"love":{"main":{"up":"낭만적�
     S.picks.forEach((p, i) => {
       const c = CARDS[p.id]; const x = dc[i] || {};
       L.push(`${i + 1}. [${S.spread.pos[i]}] ${c.name}${p.rev ? ' (역방향)' : ''}`);
+      const o = S.result.reversedOn ? FACTS.oppositeRef(p.id, p.rev, S.mode) : null;
+      if (o) L.push(`   ${o.icon} ${o.label}: ${o.kw}${o.core ? ' — ' + o.core : ''}`);
       if (x.picture) L.push('   [그림] ' + x.picture);
       if (x.message) L.push('   ' + x.message);
       if (x.interpretation) L.push('   ' + x.interpretation);
